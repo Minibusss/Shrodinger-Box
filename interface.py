@@ -1,12 +1,13 @@
 import tkinter as tk
 from tkinter import messagebox
-from PIL import Image, ImageTk 
+from PIL import Image, ImageTk
 import serial 
 import threading
 import os
 import subprocess
 
-serial_port = serial.Serial(port = "COM3", baudrate = 38400)
+serial_port = serial.Serial(port = "/dev/ttyUSB0", baudrate = 38400)
+
 
 
 def ajuster_luminosite(valeur, base_color):
@@ -63,34 +64,26 @@ def show_profile_menu(event):
 
 # Fonction pour lancer un jeu (vous remplacerez cette fonction par l'appel à votre programme PyGame)
 def launch_game():
-    from string import ascii_uppercase
-    drives = [f"{letter}:/" for letter in ascii_uppercase if os.path.exists(f"{letter}:/")]
+    logout()
+    result = subprocess.run(["python3", "media/sb/SB/mainSB.py"], capture_output=True, text=True)
 
-    # Filtrer pour trouver les clés USB (exclure C:/) -> pour raccourcir la recherche
-    usb_drives = [drive for drive in drives if drive != "C:/"]
+    
 
-    # Rechercher mainSB.py sur les lecteurs détectés
-    for drive in usb_drives:
-        potential_file = os.path.join(drive, "mainSB.py")
-        if os.path.exists(potential_file):
-            print(f"Fichier trouvé : {potential_file}")
-
-            os.chdir(os.path.dirname(potential_file))
-            
-            # Étape 4 : Exécuter le fichier Python
-            print("Exécution du fichier...")
-            try:
-                logout()
-                result = subprocess.run(["python", potential_file], capture_output=True, text=True)
-                print("Sortie du script :")
-                print(result.stdout)  # Affiche la sortie standard du script
-                print("Erreurs éventuelles :")
-                print(result.stderr)  # Affiche la sortie d'erreur, si elle existe
-            except Exception as e:
-                print(f"Erreur lors de l'exécution : {e}")
-            return
-
-    print("Fichier 'mainSB.py' introuvable sur les clés USB.")
+    
+def detect_usb_drives(file_name):
+    base_dirs = ["/media", "mnt"]
+    
+    for base_dir in base_dirs:
+        if os.path.exists(base_dir):
+            for item in os.listdir(base_dir):
+                full_path = os.path.join(base_dir, item)
+                if os.path.ismount(full_path):
+                    print(f"Recherche dans : {full_path}")
+                    for root, dirs, files in os.walk(full_path):
+                        if file_name in files:
+                            return os.path.join(root, file_name)
+    return '/media/sb/SB'
+print(detect_usb_drives('mainSB.py'))
 
 def listen_for_arduino():
     while True:
@@ -99,15 +92,33 @@ def listen_for_arduino():
             print(f"Message reçu: {line}")
             if "Boutton OK" in line:  # Si le message "Boutton OK" est trouvé
                 launch_game()
+            elif 'red' in line:
+                change_bg('red')
+            elif 'orange' in line:
+                change_bg('orange')
+            elif 'yellow' in line:
+                change_bg('yellow')
+            elif 'green' in line:
+                change_bg('green')
+            elif 'blue' in line:
+                change_bg('blue')
+            elif 'purple' in line:
+                change_bg('purple')
 
 def detect_usb_and_change_button(button):
     """Détecte les clés USB et change le bouton en image si 'mainSB.py' est trouvé."""
     while True:
         fichier = False
         from string import ascii_uppercase
-        drives = [f"{letter}:/" for letter in ascii_uppercase if os.path.exists(f"{letter}:/")]
-
-        usb_drives = [drive for drive in drives if drive != "C:/"]
+        drives = detect_usb_drives('mainSB.py')
+        if drives != None:
+            change_button_to_image(os.path.join(drives, "jeu.png"))
+            return
+        else:
+            button.config(bg = 'white', text = 'Veuillez insérer un jeu', compound=tk.CENTER)
+            return
+'''
+        usb_drives = [drive for drive in drives]
         for drive in usb_drives:
             potential_file = os.path.join(drive, "mainSB.py")
             if os.path.exists(potential_file):
@@ -117,7 +128,7 @@ def detect_usb_and_change_button(button):
                 return 
         if not fichier:
             button.config(bg = 'white', text = 'Veuillez insérer un jeu', compound=tk.CENTER)
-            return
+            return'''
 
 def change_button_to_image(image_path):
     """Remplace le bouton principal par une image."""
@@ -136,7 +147,7 @@ def change_button_to_image(image_path):
 
 # Créer la fenêtre principale
 window = tk.Tk()
-window.title("ShrödingerBox")
+window.title("Interface avec menu déroulant")
 window.attributes("-fullscreen", True)
 window.config(bg = 'purple')
 
